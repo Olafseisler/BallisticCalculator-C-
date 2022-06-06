@@ -1,11 +1,16 @@
 #ifndef BALLISTICCALCULATOR_H
 #define BALLISTICCALCULATOR_H
 
-#include <QMainWindow>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class BallisticCalculator; }
 QT_END_NAMESPACE
+
+struct Trajectory {
+    double angle;
+    std::vector<std::pair<double, double>> pos_points;
+    double time;
+};
 
 class BallisticCalculator : public QMainWindow
 {
@@ -14,7 +19,7 @@ class BallisticCalculator : public QMainWindow
 public:
     BallisticCalculator(QWidget *parent = nullptr);
     ~BallisticCalculator();
-    auto calculate_trajectory(double a, double v, double h, double p,
+    Trajectory calculate_trajectory(double a, double v, double h, double p,
                               double C, double A, double m);
 
     std::pair<double, double> v_to_components(double v, double angle);
@@ -23,6 +28,7 @@ public:
     double get_frontal_area(double d);
     double get_CdG7(double targetVelocity, double base_Cd);
     double get_mach(double velocity);
+    void draw_plot(Trajectory traj);
     double find_angle(double r, double try_a, double v, double h, double p,
                       double C, double A, double m, double min,
                       double max, double tolerance, double i);

@@ -84,12 +84,6 @@ public:
     }
 };
 
-struct Trajectory {
-    double angle;
-    vector<std::pair<double, double>> pos_points;
-    double time;
-};
-
 
 
 // Set up UI
@@ -116,7 +110,7 @@ BallisticCalculator::~BallisticCalculator()
 }
 
 // Calculate projectile trajectory given angle, velocity and other parameters
-auto BallisticCalculator::calculate_trajectory(double a, double v, double h,
+Trajectory BallisticCalculator::calculate_trajectory(double a, double v, double h,
                                                double p, double C, double A, double m){
     std::pair<double, double> pair = v_to_components(v, a);
     double vx = pair.first;
@@ -165,6 +159,9 @@ auto BallisticCalculator::calculate_trajectory(double a, double v, double h,
 
     trajectory.time = time;
     return trajectory;
+}
+
+void BallisticCalculator::draw_plot(Trajectory traj){
 }
 
 // Trigger for "Calculate" button
