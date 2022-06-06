@@ -1,5 +1,6 @@
 #ifndef BALLISTICCALCULATOR_H
 #define BALLISTICCALCULATOR_H
+#include <QMainWindow>
 
 
 QT_BEGIN_NAMESPACE
