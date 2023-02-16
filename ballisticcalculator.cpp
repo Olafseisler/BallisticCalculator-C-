@@ -1,9 +1,13 @@
 #include "ballisticcalculator.h"
 #include "ui_ballisticcalculator.h"
+//#include "ballisticplot.h"
 #include "QDoubleValidator"
+
 #include <cmath>
 #include <vector>
 #include <map>
+#include <iostream>
+
 
 // Constants
 #define PI 3.14159265 // pi
@@ -15,12 +19,10 @@
 #define R 8.31446 // ideal gas constant
 #define L 0.0065 // temperature lapse rate
 
-using namespace std;
 
 // Which parameter to calculate
 enum CalcSetting { range, angle };
 static CalcSetting setting;
-
 static std::map<double, double> cd_G7 = { {0, 0.9061488673139159},
                                         {0.4, 0.9022090896299423},
                                         {0.5, 0.7879555367947094},
@@ -93,6 +95,11 @@ BallisticCalculator::BallisticCalculator(QWidget *parent)
 {
     ui->setupUi(this);
 
+//    plot = new BallisticPlot();
+//    plot->show();
+    plotWindow = nullptr;
+
+
     // Set up numerical only fields
     ui->initialVelocityBox->setValidator( new MyValidator(-1, 2000, 2, this) );
     ui->initialHeightBox->setValidator( new MyValidator(-1, 10000, 2, this) );
@@ -107,6 +114,10 @@ BallisticCalculator::BallisticCalculator(QWidget *parent)
 BallisticCalculator::~BallisticCalculator()
 {
     delete ui;
+    delete plotWindow;
+    delete chart;
+    delete axisX;
+    delete axisY;
 }
 
 // Calculate projectile trajectory given angle, velocity and other parameters
@@ -142,6 +153,8 @@ Trajectory BallisticCalculator::calculate_trajectory(double a, double v, double 
         trajectory.pos_points.push_back(new_pos);
     }
 
+    trajectory.apex = std::pair(x, y);
+
     // Calculate path to ground
     while (y > 0){
         x += vx * TIMESTEP;
@@ -161,7 +174,51 @@ Trajectory BallisticCalculator::calculate_trajectory(double a, double v, double 
     return trajectory;
 }
 
-void BallisticCalculator::draw_plot(Trajectory traj){
+void BallisticCalculator::draw_plot(Trajectory &traj){
+    if (plotWindow == nullptr){
+        plotWindow = new QMainWindow(this);
+        plotWindow->resize(420, 300);
+        plotWindow->setWindowTitle("Trajectory Plot");
+
+        series = new QLineSeries(plotWindow);
+        chart = new QChart();
+
+        axisX = new QValueAxis();
+        axisY = new QValueAxis();
+
+        chart->addSeries(series);
+        chart->addAxis(axisX, Qt::AlignBottom);
+        chart->addAxis(axisY, Qt::AlignLeft);
+
+        series->attachAxis(axisX);
+        series->attachAxis(axisY);
+
+        chartView = new QChartView(chart);
+        chartView->setRenderHint(QPainter::Antialiasing);
+    }
+
+    series->clear();
+
+    for (size_t i = 0; i < traj.pos_points.size(); i += 10){
+        series->append(traj.pos_points[i].first, traj.pos_points[i].second);
+    }
+
+    double xScaleMax = traj.pos_points[traj.pos_points.size() - 1].first * 1.02;
+    axisX->setRange(traj.pos_points[0].first, xScaleMax);
+    axisX->setMin(traj.pos_points[0].first);
+    axisX->setMax(xScaleMax);
+    axisX->setTickCount(5);
+
+    double yScaleMax = traj.apex.second * 1.02;
+    axisY->setRange(traj.pos_points[0].second, yScaleMax);
+    axisY->setMin(traj.pos_points[0].second);
+    axisY->setMax(yScaleMax);
+    axisY->setTickCount(5);
+
+    plotWindow->setCentralWidget(chartView);
+    chartView->repaint();
+    plotWindow->show();
+
 }
 
 // Trigger for "Calculate" button
@@ -182,16 +239,19 @@ void BallisticCalculator::on_pushButton_clicked()
         Trajectory traj = calculate_trajectory(a, v, h, p, C, A, m);
         std::pair<double, double> last_point = traj.pos_points.back();
         ui->resultBox->setText(QString::number(last_point.first, 'f', 2));
+        draw_plot(traj);
+
     }
     else if (setting == CalcSetting::angle){
         double desired_range = ui->angleBox->text().toDouble();
         double angle = find_angle(desired_range, 27.5, v, h, p, C, A, m, -10, 45, 0.01, 20);
         if (angle == -100){
             ui->resultBox->setText("OUT OF MAX RANGE");
-        } else{
+        } else {
             ui->resultBox->setText(QString::number(angle, 'f', 3));
         }
     }
+
 }
 
 // Returns horizontal and vertical components of velocity given angle to ground
@@ -264,7 +324,7 @@ double BallisticCalculator::find_angle(double r, double try_a, double v, double 
         min = try_a;
         return find_angle(r, try_a+(max-min)/2, v, h, p, C, A, m, min, max, tolerance, i - 1);
     }
-    // If resulting range is more than desired, increase try angle by half of min-max difference
+    // If resulting range is more than desired, decrease try angle by half of min-max difference
     else {
         max = try_a;
         return find_angle(r, try_a-(max-min)/2, v, h, p, C, A, m, min, max, tolerance, i - 1);
