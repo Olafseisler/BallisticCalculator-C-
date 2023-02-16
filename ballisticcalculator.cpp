@@ -1,7 +1,4 @@
 #include "ballisticcalculator.h"
-#include "ui_ballisticcalculator.h"
-//#include "ballisticplot.h"
-#include "QDoubleValidator"
 
 #include <cmath>
 #include <vector>
@@ -21,8 +18,6 @@
 
 
 // Which parameter to calculate
-enum CalcSetting { range, angle };
-static CalcSetting setting;
 static std::map<double, double> cd_G7 = { {0, 0.9061488673139159},
                                         {0.4, 0.9022090896299423},
                                         {0.5, 0.7879555367947094},
@@ -52,73 +47,6 @@ static std::map<double, double> cd_G7 = { {0, 0.9061488673139159},
                                         {2.2, 1.1110173068805402},
                                         {2.4, 1.0637399746728577}};
 
-// Custom validator class for parameter fields
-class MyValidator : public QDoubleValidator
-{
-public:
-    MyValidator(double bottom, double top, int decimals, QObject * parent) :
-        QDoubleValidator(bottom, top, decimals, parent)
-    {
-    }
-
-    QValidator::State validate(QString &s, int &i) const
-    {
-        if (s.isEmpty() || s == '-') {
-            return QValidator::Intermediate;
-        }
-
-        bool ok;
-        double d = s.toDouble(&ok);
-
-        if(s.indexOf('.') != -1) {
-            int charsAfterPoint = s.length() - s.indexOf('.') - 1;
-
-            if (charsAfterPoint > decimals()) {
-                return QValidator::Invalid;
-            }
-        }
-
-        if (ok && d > bottom() && d < top()) {
-            return QValidator::Acceptable;
-        } else {
-            return QValidator::Invalid;
-        }
-    }
-};
-
-
-
-// Set up UI
-BallisticCalculator::BallisticCalculator(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::BallisticCalculator)
-{
-    ui->setupUi(this);
-
-//    plot = new BallisticPlot();
-//    plot->show();
-    plotWindow = nullptr;
-
-
-    // Set up numerical only fields
-    ui->initialVelocityBox->setValidator( new MyValidator(-1, 2000, 2, this) );
-    ui->initialHeightBox->setValidator( new MyValidator(-1, 10000, 2, this) );
-    ui->angleBox->setValidator( new MyValidator(-91.0, 90, 3, this) );
-    ui->projectileMassBox->setValidator( new MyValidator(-1, 1000, 5, this) );
-    ui->projectileDiameterBox->setValidator( new MyValidator(-1, 10, 5, this) );
-    ui->cdBox->setValidator( new MyValidator(-1, 3, 3, this) );
-
-}
-
-// Destructor
-BallisticCalculator::~BallisticCalculator()
-{
-    delete ui;
-    delete plotWindow;
-    delete chart;
-    delete axisX;
-    delete axisY;
-}
 
 // Calculate projectile trajectory given angle, velocity and other parameters
 Trajectory BallisticCalculator::calculate_trajectory(double a, double v, double h,
@@ -174,85 +102,7 @@ Trajectory BallisticCalculator::calculate_trajectory(double a, double v, double 
     return trajectory;
 }
 
-void BallisticCalculator::draw_plot(Trajectory &traj){
-    if (plotWindow == nullptr){
-        plotWindow = new QMainWindow(this);
-        plotWindow->resize(420, 300);
-        plotWindow->setWindowTitle("Trajectory Plot");
 
-        series = new QLineSeries(plotWindow);
-        chart = new QChart();
-
-        axisX = new QValueAxis();
-        axisY = new QValueAxis();
-
-        chart->addSeries(series);
-        chart->addAxis(axisX, Qt::AlignBottom);
-        chart->addAxis(axisY, Qt::AlignLeft);
-
-        series->attachAxis(axisX);
-        series->attachAxis(axisY);
-
-        chartView = new QChartView(chart);
-        chartView->setRenderHint(QPainter::Antialiasing);
-    }
-
-    series->clear();
-
-    for (size_t i = 0; i < traj.pos_points.size(); i += 10){
-        series->append(traj.pos_points[i].first, traj.pos_points[i].second);
-    }
-
-    double xScaleMax = traj.pos_points[traj.pos_points.size() - 1].first * 1.02;
-    axisX->setRange(traj.pos_points[0].first, xScaleMax);
-    axisX->setMin(traj.pos_points[0].first);
-    axisX->setMax(xScaleMax);
-    axisX->setTickCount(5);
-
-    double yScaleMax = traj.apex.second * 1.02;
-    axisY->setRange(traj.pos_points[0].second, yScaleMax);
-    axisY->setMin(traj.pos_points[0].second);
-    axisY->setMax(yScaleMax);
-    axisY->setTickCount(5);
-
-    plotWindow->setCentralWidget(chartView);
-    chartView->repaint();
-    plotWindow->show();
-
-}
-
-// Trigger for "Calculate" button
-void BallisticCalculator::on_pushButton_clicked()
-{
-    double v = ui->initialVelocityBox->text().toDouble();
-    double h = ui->initialHeightBox->text().toDouble();
-    double p = get_air_density(h);
-    double C = ui->cdBox->text().toDouble();
-    double diameter = ui->projectileDiameterBox->text().toDouble();
-    double A = get_frontal_area(diameter);
-    double m = ui->projectileMassBox->text().toDouble();
-    double a = ui->angleBox->text().toDouble();
-
-    if (v <= 0) return;
-
-    if (setting == CalcSetting::range){
-        Trajectory traj = calculate_trajectory(a, v, h, p, C, A, m);
-        std::pair<double, double> last_point = traj.pos_points.back();
-        ui->resultBox->setText(QString::number(last_point.first, 'f', 2));
-        draw_plot(traj);
-
-    }
-    else if (setting == CalcSetting::angle){
-        double desired_range = ui->angleBox->text().toDouble();
-        double angle = find_angle(desired_range, 27.5, v, h, p, C, A, m, -10, 45, 0.01, 20);
-        if (angle == -100){
-            ui->resultBox->setText("OUT OF MAX RANGE");
-        } else {
-            ui->resultBox->setText(QString::number(angle, 'f', 3));
-        }
-    }
-
-}
 
 // Returns horizontal and vertical components of velocity given angle to ground
 std::pair<double, double> BallisticCalculator::v_to_components(double v, double angle){
@@ -308,7 +158,7 @@ double BallisticCalculator::find_angle(double r, double try_a, double v, double 
 
     // Calculate trajectory using try angle
     Trajectory traj = calculate_trajectory(try_a, v, h, p, C, A, m);
-    qDebug() << "Angle" << try_a << " Range: " << traj.pos_points.back().first;
+//    qDebug() << "Angle" << try_a << " Range: " << traj.pos_points.back().first;
 
     if (i <= 0 && traj.pos_points.back().first < r){
         return -100;
@@ -331,23 +181,5 @@ double BallisticCalculator::find_angle(double r, double try_a, double v, double 
     }
 }
 
-// Trigger activates on combo box parameter changed
-void BallisticCalculator::on_comboBox_currentIndexChanged(int index)
-{
-    ui->angleBox->setText("");
-    ui->resultBox->setText("");
 
-    if (index == 0){
-        ui->resultLabel->setText("Range (m):");
-        setting = CalcSetting::range;
-        ui->angleLabel->setText("Angle (degrees)");
-        ui->angleBox->setValidator( new MyValidator(-91.0, 90, 3, this) );
-    }
-    else if (index == 1){
-        ui->resultLabel->setText("Angle (degrees):");
-        setting = CalcSetting::angle;
-        ui->angleLabel->setText("Range (m)");
-        ui->angleBox->setValidator( new MyValidator(-1, 10000, 1, this) );
-    }
-}
 
