@@ -4,7 +4,7 @@
 #include <vector>
 #include <map>
 #include <iostream>
-
+#include <QString>
 
 // Constants
 #define PI 3.14159265 // pi
@@ -15,6 +15,7 @@
 #define M 0.0289652 // molar mass of dry air
 #define R 8.31446 // ideal gas constant
 #define L 0.0065 // temperature lapse rate
+
 
 
 // Which parameter to calculate
@@ -114,6 +115,7 @@ std::pair<double, double> BallisticCalculator::v_to_components(double v, double 
     return components;
 }
 
+// Combines x and y velocities into one actual velocity vector
 double BallisticCalculator::components_to_v(double vx, double vy){
     return sqrt(vx * vx + vy * vy);
 }

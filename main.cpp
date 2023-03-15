@@ -1,4 +1,3 @@
-#include "ballisticcalculator.h"
 #include "ballisticui.h"
 #include <QApplication>
 

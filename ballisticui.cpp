@@ -1,5 +1,6 @@
 #include "ballisticui.h"
 #include "ui_ballisticcalculator.h"
+#include "ballisticcalculator.h"
 #include "QDoubleValidator"
 
 
@@ -34,7 +35,7 @@ public:
         if (ok && d > bottom() && d < top()) {
             return QValidator::Acceptable;
         } else {
-            return QValidator::Invalid;
+            return MyValidator::Invalid;
         }
     }
 };
@@ -58,11 +59,8 @@ BallisticUI::BallisticUI(QWidget *parent):
 
 BallisticUI::~BallisticUI()
 {
+
     delete ui;
-    delete chart;
-    delete axisX;
-    delete axisY;
-    delete plotWindow;
 }
 
 
@@ -75,9 +73,12 @@ void BallisticUI::draw_plot(Trajectory &traj){
 
         series = new QLineSeries(plotWindow);
         chart = new QChart();
+        chart->setParent(this);
 
         axisX = new QValueAxis();
         axisY = new QValueAxis();
+        axisX->setParent(this);
+        axisY->setParent(this);
 
         chart->addSeries(series);
         chart->addAxis(axisX, Qt::AlignBottom);

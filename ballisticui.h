@@ -1,12 +1,12 @@
 #pragma once
 
-#include "ballisticui.h"
-#include "ballisticcalculator.h"
+#include <ballisticstructs.h>
 #include <QMainWindow>
 #include <QLineSeries>
 #include <QChart>
 #include <QChartView>
 #include <QValueAxis>
+#include <QSharedPointer>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class BallisticUI; }
